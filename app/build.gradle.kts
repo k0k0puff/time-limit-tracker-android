@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp") version "1.9.22-1.0.17"
 }
 
@@ -29,6 +28,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.10" }
 }
 
 dependencies {
@@ -47,6 +47,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("com.google.android.material:material:1.11.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")

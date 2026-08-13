@@ -1,0 +1,6 @@
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"superpowers:subagent-driven-development"}
+{"t":0,"agent":"a0ad707","agent_type":"general-purpose","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a0ad707","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":145856}
+{"t":0,"agent":"ae0fd87","agent_type":"general-purpose","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"ae0fd87","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":36114}
+{"t":0,"agent":"ab14c97","agent_type":"general-purpose","event":"agent_start","parent_mode":"none"}

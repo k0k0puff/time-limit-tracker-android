@@ -1,0 +1,7 @@
+{
+  "tool_name": "Agent",
+  "tool_input_preview": "{\"description\":\"Task 1: Android project scaffold\",\"prompt\":\"You are implementing Task 1 of an Android app called \\\"Time Limit Tracker\\\". This is a greenfield project — no Android code exists yet.\\n\\n*...",
+  "error": "Cannot create agent worktree: not in a git repository and no WorktreeCreate hooks are configured. Configure WorktreeCreate/WorktreeRemove hooks in settings.json to use worktree isolation with other VCS systems.",
+  "timestamp": "2026-08-13T10:06:29.210Z",
+  "retry_count": 1
+}

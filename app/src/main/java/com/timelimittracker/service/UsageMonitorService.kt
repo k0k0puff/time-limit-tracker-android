@@ -85,6 +85,8 @@ class UsageMonitorService : Service() {
         val nowMs = System.currentTimeMillis()
 
         // Check for uninstalled apps
+        val deletedPackages = mutableSetOf<String>()
+
         trackedApps.forEach { app ->
             try {
                 packageManager.getPackageInfo(app.packageName, 0)
@@ -96,11 +98,11 @@ class UsageMonitorService : Service() {
                     AlarmScheduler.cancelReminder(this, app.packageName)
                 }
                 settingsRepo.deleteTrackedApp(app.packageName)
-                return@forEach
+                deletedPackages.add(app.packageName)
             }
         }
 
-        trackedApps.forEach { app ->
+        trackedApps.filter { it.packageName !in deletedPackages }.forEach { app ->
             val session = sessionRepo.getActiveSession(app.packageName)
 
             if (foregroundPkg == app.packageName) {
@@ -177,7 +179,7 @@ class UsageMonitorService : Service() {
         sessionRepo.endAllSessions()
     }
 
-    private fun getForegroundPackage(): String? {
+    private suspend fun getForegroundPackage(): String? {
         val nowMs = System.currentTimeMillis()
         val events = usageStatsManager.queryEvents(nowMs - 10_000L, nowMs)
         val event = UsageEvents.Event()

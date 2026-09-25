@@ -15,7 +15,8 @@ data class TrackedAppUiState(
     val appName: String,
     val iconBytes: ByteArray?,
     val limitMinutes: Int,
-    val sessionStatus: SessionStatus?  // null = no active session
+    val sessionStatus: SessionStatus?,  // null = no active session
+    val trackedSeconds: Long = 0L
 )
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
@@ -31,17 +32,45 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         ) { apps, sessions ->
             val sessionMap = sessions.associateBy { it.packageName }
             apps.map { app ->
+                val session = sessionMap[app.packageName]
                 TrackedAppUiState(
                     packageName = app.packageName,
                     appName = app.appName,
                     iconBytes = app.iconBytes,
                     limitMinutes = app.limitMinutes,
-                    sessionStatus = sessionMap[app.packageName]?.status
+                    sessionStatus = session?.status,
+                    trackedSeconds = session?.accumulatedActiveSeconds ?: 0L
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val wasInterrupted: StateFlow<Boolean> = MutableStateFlow(false)
+
+    fun updateAppLimit(packageName: String, limitMinutes: Int) {
+        viewModelScope.launch {
+            val app = appInstance.settingsRepo.getByPackageName(packageName) ?: return@launch
+            appInstance.settingsRepo.upsertTrackedApp(app.copy(limitMinutes = limitMinutes))
+        }
+    }
+
+    fun resetSession(packageName: String) {
+        viewModelScope.launch {
+            val session = appInstance.sessionRepo.getActiveSession(packageName) ?: return@launch
+            appInstance.sessionRepo.updateSession(session.copy(status = SessionStatus.ENDED))
+        }
+    }
+
+    fun deleteTrackedApp(packageName: String) {
+        viewModelScope.launch {
+            val session = appInstance.sessionRepo.getActiveSession(packageName)
+            if (session != null) {
+                appInstance.sessionRepo.updateSession(
+                    session.copy(status = SessionStatus.ENDED)
+                )
+            }
+            appInstance.settingsRepo.deleteTrackedApp(packageName)
+        }
+    }
 
     fun setTrackingEnabled(enabled: Boolean) {
         viewModelScope.launch {

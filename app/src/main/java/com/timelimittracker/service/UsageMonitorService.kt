@@ -128,7 +128,7 @@ class UsageMonitorService : Service() {
                             message, app.appName, updated.snapshotLimitMinutes,
                             updated.accumulatedActiveSeconds
                         )
-                        withContext(Dispatchers.Main) { overlayManager.show(substituted) {} }
+                        withContext(Dispatchers.Main) { overlayManager.show(substituted, app.packageName) {} }
                         AlarmScheduler.scheduleReminder(this, app.packageName)
                     }
                 }
@@ -171,7 +171,7 @@ class UsageMonitorService : Service() {
             message, trackedApp.appName, advanced.snapshotLimitMinutes,
             advanced.accumulatedActiveSeconds
         )
-        withContext(Dispatchers.Main) { overlayManager.show(substituted) {} }
+        withContext(Dispatchers.Main) { overlayManager.show(substituted, packageName) {} }
         AlarmScheduler.scheduleReminder(this, packageName)
     }
 
@@ -181,16 +181,30 @@ class UsageMonitorService : Service() {
 
     private suspend fun getForegroundPackage(): String? {
         val nowMs = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(nowMs - 10_000L, nowMs)
+        // Use a 2-hour window so we catch apps that have been open a long time
+        val events = usageStatsManager.queryEvents(nowMs - 2 * 60 * 60 * 1000L, nowMs)
         val event = UsageEvents.Event()
-        var lastForegroundPkg: String? = null
+        var lastFgPkg: String? = null
+        var lastFgTime = 0L
+        val lastBgTime = mutableMapOf<String, Long>()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                lastForegroundPkg = event.packageName
+            when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    if (event.timeStamp > lastFgTime) {
+                        lastFgTime = event.timeStamp
+                        lastFgPkg = event.packageName
+                    }
+                }
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    val prev = lastBgTime[event.packageName] ?: 0L
+                    if (event.timeStamp > prev) lastBgTime[event.packageName] = event.timeStamp
+                }
             }
         }
-        return lastForegroundPkg
+        // If the last-foregrounded app has since moved to background, nothing is in foreground
+        if (lastFgPkg != null && (lastBgTime[lastFgPkg] ?: 0L) > lastFgTime) return null
+        return lastFgPkg
     }
 
     private fun createNotificationChannel() {

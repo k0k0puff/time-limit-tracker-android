@@ -1,6 +1,8 @@
 package com.timelimittracker.service
 
+import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -18,7 +20,7 @@ class OverlayManager(private val context: Context) {
 
     val isShowing: Boolean get() = currentOverlay != null
 
-    fun show(message: String, onDismiss: () -> Unit) {
+    fun show(message: String, packageName: String, onDismiss: () -> Unit) {
         if (isShowing) hide()
 
         val params = WindowManager.LayoutParams(
@@ -35,7 +37,7 @@ class OverlayManager(private val context: Context) {
             flags = flags and WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL.inv()
         }
 
-        val overlay = buildOverlayView(message) {
+        val overlay = buildOverlayView(message, packageName) {
             hide()
             onDismiss()
         }
@@ -58,7 +60,19 @@ class OverlayManager(private val context: Context) {
         currentOverlay = null
     }
 
-    private fun buildOverlayView(message: String, onDismiss: () -> Unit): FrameLayout {
+    private fun closeApp(packageName: String) {
+        // Navigate to home first so the target app moves to background
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(homeIntent)
+        // Then kill it
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        am.killBackgroundProcesses(packageName)
+    }
+
+    private fun buildOverlayView(message: String, packageName: String, onDismiss: () -> Unit): FrameLayout {
         val scrim = FrameLayout(context).apply {
             setBackgroundColor(Color.argb(204, 0, 0, 0)) // 80% black
             isClickable = true
@@ -87,11 +101,30 @@ class OverlayManager(private val context: Context) {
         val dismissButton = Button(context).apply {
             text = "Dismiss"
             textSize = 16f
-            setOnClickListener { onDismiss() }
+            setOnClickListener {
+                card.removeAllViews()
+                showConfirmStep(card, onDismiss)
+            }
+        }
+
+        val closeAppButton = Button(context).apply {
+            text = "Close App"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.rgb(200, 50, 50))
+                cornerRadius = dpToPx(8).toFloat()
+            }
+            setOnClickListener {
+                hide()
+                closeApp(packageName)
+            }
         }
 
         card.addView(messageView)
         card.addView(dismissButton)
+        card.addView(closeAppButton)
 
         val cardParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -104,6 +137,23 @@ class OverlayManager(private val context: Context) {
 
         scrim.addView(card, cardParams)
         return scrim
+    }
+
+    private fun showConfirmStep(card: LinearLayout, onDismiss: () -> Unit) {
+        val confirmButton = Button(context).apply {
+            text = "Dismiss"
+            textSize = 16f
+            setOnClickListener { onDismiss() }
+        }
+        val confirmMessage = TextView(context).apply {
+            text = "Confirm Dismiss"
+            textSize = 18f
+            setTextColor(Color.BLACK)
+            gravity = Gravity.CENTER
+            setPadding(0, dpToPx(16), 0, 0)
+        }
+        card.addView(confirmButton)
+        card.addView(confirmMessage)
     }
 
     private fun dpToPx(dp: Int): Int =

@@ -30,6 +30,7 @@ fun HomeScreen(
     onAddApp: () -> Unit,
     onEditApp: (String) -> Unit,
     onOpenTemplates: () -> Unit,
+    onOpenPermissions: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
     val trackingEnabled by viewModel.trackingEnabled.collectAsStateWithLifecycle()
@@ -45,6 +46,7 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Time Limit Tracker") },
                 actions = {
+                    TextButton(onClick = onOpenPermissions) { Text("Permissions") }
                     TextButton(onClick = onOpenTemplates) { Text("Templates") }
                 }
             )

@@ -15,7 +15,9 @@ data class PermissionState(
     val usageAccess: Boolean,
     val overlayPermission: Boolean,
     val notifications: Boolean,
-    val batteryOptExempt: Boolean
+    val batteryOptExempt: Boolean,
+    // OEM "App launch" setting — no API to read it, always prompts user to set manually
+    val launchAppManaged: Boolean = false
 ) {
     val allRequiredGranted: Boolean get() = usageAccess && overlayPermission
 }

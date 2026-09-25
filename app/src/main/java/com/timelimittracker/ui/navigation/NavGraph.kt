@@ -23,19 +23,23 @@ fun AppNavGraph(startDestination: String) {
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.ONBOARDING) {
+            val fromHome = navController.previousBackStackEntry != null
             OnboardingScreen(
                 onAllRequiredGranted = {
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
-                }
+                },
+                onBack = if (fromHome) ({ navController.popBackStack() }) else null,
+                autoNavigate = !fromHome
             )
         }
         composable(Routes.HOME) {
             HomeScreen(
                 onAddApp = { navController.navigate(Routes.ADD_APP) },
                 onEditApp = { navController.navigate(Routes.ADD_APP) },
-                onOpenTemplates = { navController.navigate(Routes.TEMPLATES) }
+                onOpenTemplates = { navController.navigate(Routes.TEMPLATES) },
+                onOpenPermissions = { navController.navigate(Routes.ONBOARDING) }
             )
         }
         composable(Routes.ADD_APP) {

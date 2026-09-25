@@ -19,13 +19,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun OnboardingScreen(
     onAllRequiredGranted: () -> Unit,
+    onBack: (() -> Unit)? = null,
+    autoNavigate: Boolean = true,
     viewModel: OnboardingViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val permissions by viewModel.permissions.collectAsStateWithLifecycle()
 
     LaunchedEffect(permissions.allRequiredGranted) {
-        if (permissions.allRequiredGranted) onAllRequiredGranted()
+        if (autoNavigate && permissions.allRequiredGranted) onAllRequiredGranted()
     }
 
     val notifLauncher = rememberLauncherForActivityResult(
@@ -97,10 +99,38 @@ fun OnboardingScreen(
                 context.startActivity(intent)
             }
         )
+        Spacer(Modifier.height(16.dp))
+
+        PermissionRow(
+            label = "App Launch",
+            description = "Set app launch to manual to ensure background tracking is not blocked.",
+            granted = permissions.launchAppManaged,
+            required = false,
+            onGrant = {
+                val launched = runCatching {
+                    context.startActivity(
+                        Intent().setClassName(
+                            "com.miui.securitycenter",
+                            "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                        )
+                    )
+                }.isSuccess
+                if (!launched) {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            .setData(Uri.parse("package:${context.packageName}"))
+                    )
+                }
+            }
+        )
 
         Spacer(Modifier.height(32.dp))
-        Button(onClick = { viewModel.refresh() }) {
-            Text("I've granted permissions — Continue")
+        if (onBack != null) {
+            Button(onClick = onBack) { Text("Done") }
+        } else {
+            Button(onClick = { viewModel.refresh() }) {
+                Text("I've granted permissions — Continue")
+            }
         }
     }
 }

@@ -27,6 +27,7 @@ fun AddAppScreen(
     viewModel: AddAppViewModel = viewModel()
 ) {
     val apps by viewModel.filteredApps.collectAsStateWithLifecycle()
+    val debugInfo by viewModel.debugInfo.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     var selectedApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var limitInput by remember { mutableStateOf("30") }
@@ -55,6 +56,14 @@ fun AddAppScreen(
                     .padding(16.dp),
                 placeholder = { Text("Search apps...") },
                 singleLine = true
+            )
+
+            // DEBUG BANNER — remove after diagnosis
+            Text(
+                text = "DBG: $debugInfo | list=${apps.size}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
             LazyColumn {

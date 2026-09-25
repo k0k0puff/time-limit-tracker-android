@@ -89,9 +89,9 @@ object SessionStateMachine {
     }
 
     fun getMessageForCycle(session: SessionEntity): String {
-        val defaultR1 = "Still on {appName}. Take a break."
-        val defaultR2 = "Another 5 minutes on {appName}..."
-        val defaultR3 = "You've now been on {appName} for {elapsed} min."
+        val defaultR1 = "You're done. Stop"
+        val defaultR2 = "That's enough"
+        val defaultR3 = "Stop Now"
         return when (session.reminderCycleIndex) {
             0 -> session.snapshotMainMessage
             1 -> session.snapshotReminder1 ?: defaultR1

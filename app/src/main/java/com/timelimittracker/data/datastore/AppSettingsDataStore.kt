@@ -17,7 +17,7 @@ class AppSettingsDataStore(private val context: Context) {
     }
 
     val trackingEnabled: Flow<Boolean> = context.dataStore.data
-        .map { prefs -> prefs[TRACKING_ENABLED] ?: false }
+        .map { prefs -> prefs[TRACKING_ENABLED] ?: true }
 
     suspend fun setTrackingEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs ->

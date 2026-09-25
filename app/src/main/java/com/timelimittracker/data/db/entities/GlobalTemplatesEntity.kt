@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class GlobalTemplatesEntity(
     @PrimaryKey val id: Int = 1,
     val mainMessage: String = "You've been on {appName} for {limit} min.",
-    val reminder1: String? = null,
-    val reminder2: String? = null,
-    val reminder3: String? = null
+    val reminder1: String? = "You're done. Stop",
+    val reminder2: String? = "That's enough",
+    val reminder3: String? = "Stop Now"
 )

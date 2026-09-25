@@ -62,21 +62,21 @@ fun TemplatesScreen(
             TemplateField(
                 label = "Reminder 1",
                 value = drafts.reminder1 ?: "",
-                placeholder = "Still on {appName}. Take a break.",
+                placeholder = "You're done. Stop",
                 onValueChange = { viewModel.updateReminder1(it) }
             )
 
             TemplateField(
                 label = "Reminder 2",
                 value = drafts.reminder2 ?: "",
-                placeholder = "Another 5 minutes on {appName}...",
+                placeholder = "That's enough",
                 onValueChange = { viewModel.updateReminder2(it) }
             )
 
             TemplateField(
                 label = "Reminder 3",
                 value = drafts.reminder3 ?: "",
-                placeholder = "You've now been on {appName} for {elapsed} min.",
+                placeholder = "Stop Now",
                 onValueChange = { viewModel.updateReminder3(it) }
             )
 

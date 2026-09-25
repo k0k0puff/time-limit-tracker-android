@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.timelimittracker.TimeLimitApp
@@ -26,6 +27,7 @@ class AddAppViewModel(app: Application) : AndroidViewModel(app) {
     private val appInstance = app as TimeLimitApp
     private val _search = MutableStateFlow("")
     private val _allInstalled = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
+    val debugInfo = MutableStateFlow("Loading...")
 
     val filteredApps: StateFlow<List<InstalledAppInfo>> =
         combine(_search, _allInstalled, appInstance.settingsRepo.trackedApps) { query, installed, tracked ->
@@ -71,20 +73,60 @@ class AddAppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun loadInstalledApps() = withContext(Dispatchers.IO) {
-        val pm = getApplication<Application>().packageManager
-        val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
-            .map { info ->
-                InstalledAppInfo(
-                    packageName = info.packageName,
-                    appName = pm.getApplicationLabel(info).toString(),
-                    iconBytes = try { iconToBytes(pm, info.packageName) } catch (e: Exception) { null },
-                    isTracked = false,
-                    currentLimitMinutes = null
-                )
+        val TAG = "AddAppVM"
+        try {
+            Log.d(TAG, "loadInstalledApps: start")
+            debugInfo.value = "Querying PackageManager..."
+
+            val pm = getApplication<Application>().packageManager
+            val ownPackage = getApplication<Application>().packageName
+
+            // Step 1: raw result from PackageManager
+            val raw = try {
+                pm.getInstalledApplications(0)
+            } catch (e: Exception) {
+                Log.e(TAG, "getInstalledApplications threw: ${e::class.simpleName}: ${e.message}", e)
+                debugInfo.value = "ERROR in getInstalledApplications: ${e::class.simpleName}: ${e.message}"
+                return@withContext
             }
-            .sortedBy { it.appName }
-        _allInstalled.value = apps
+            Log.d(TAG, "raw list size: ${raw.size}")
+            debugInfo.value = "raw=${raw.size}"
+
+            // Step 2: after filtering own package
+            val filtered = raw.filter { it.packageName != ownPackage }
+            Log.d(TAG, "after own-package filter: ${filtered.size}")
+            debugInfo.value = "raw=${raw.size} afterFilter=${filtered.size}"
+
+            // Step 3: map to InstalledAppInfo, log any per-item failures
+            var mapOk = 0; var mapFail = 0
+            val apps = filtered.mapNotNull { info ->
+                try {
+                    val result = InstalledAppInfo(
+                        packageName = info.packageName,
+                        appName = pm.getApplicationLabel(info).toString(),
+                        iconBytes = try { iconToBytes(pm, info.packageName) } catch (e: Exception) { null },
+                        isTracked = false,
+                        currentLimitMinutes = null
+                    )
+                    mapOk++
+                    result
+                } catch (e: Exception) {
+                    mapFail++
+                    Log.w(TAG, "failed to map ${info.packageName}: ${e.message}")
+                    null
+                }
+            }.sortedBy { it.appName }
+
+            Log.d(TAG, "mapped ok=$mapOk fail=$mapFail finalList=${apps.size}")
+            debugInfo.value = "raw=${raw.size} filtered=${filtered.size} ok=$mapOk fail=$mapFail final=${apps.size}"
+
+            _allInstalled.value = apps
+            Log.d(TAG, "loadInstalledApps: done, list set")
+        } catch (e: Exception) {
+            Log.e(TAG, "loadInstalledApps outer catch: ${e::class.simpleName}: ${e.message}", e)
+            debugInfo.value = "OUTER ERROR: ${e::class.simpleName}: ${e.message}"
+            e.printStackTrace()
+        }
     }
 
     private fun iconToBytes(pm: PackageManager, packageName: String): ByteArray {

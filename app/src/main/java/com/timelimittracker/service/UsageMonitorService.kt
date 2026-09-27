@@ -135,7 +135,7 @@ class UsageMonitorService : Service() {
                             updated.accumulatedActiveSeconds
                         )
                         withContext(Dispatchers.Main) { overlayManager.show(substituted, app.packageName) {} }
-                        AlarmScheduler.scheduleReminder(this, app.packageName)
+                        AlarmScheduler.scheduleReminder(this, app.packageName, updated.snapshotLimitMinutes)
                     }
                 }
             } else {
@@ -178,7 +178,7 @@ class UsageMonitorService : Service() {
             advanced.accumulatedActiveSeconds
         )
         withContext(Dispatchers.Main) { overlayManager.show(substituted, packageName) {} }
-        AlarmScheduler.scheduleReminder(this, packageName)
+        AlarmScheduler.scheduleReminder(this, packageName, advanced.snapshotLimitMinutes)
     }
 
     private suspend fun handleBoot() {

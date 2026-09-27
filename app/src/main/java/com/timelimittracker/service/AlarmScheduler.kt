@@ -7,11 +7,10 @@ import android.content.Intent
 import android.os.Build
 
 object AlarmScheduler {
-    private const val REMINDER_INTERVAL_MS = 5 * 60 * 1000L
     private const val ACTION_REMINDER = "com.timelimittracker.ACTION_REMINDER"
     private const val EXTRA_PACKAGE_NAME = "package_name"
 
-    fun scheduleReminder(context: Context, packageName: String) {
+    fun scheduleReminder(context: Context, packageName: String, intervalMinutes: Int) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ACTION_REMINDER
@@ -24,7 +23,7 @@ object AlarmScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val triggerAt = System.currentTimeMillis() + REMINDER_INTERVAL_MS
+        val triggerAt = System.currentTimeMillis() + intervalMinutes * 60 * 1000L
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)

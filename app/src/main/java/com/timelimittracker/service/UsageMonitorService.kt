@@ -184,17 +184,18 @@ class UsageMonitorService : Service() {
         // Use a 2-hour window so we catch apps that have been open a long time
         val events = usageStatsManager.queryEvents(nowMs - 2 * 60 * 60 * 1000L, nowMs)
         val event = UsageEvents.Event()
-        var lastFgPkg: String? = null
-        var lastFgTime = 0L
+        // Track per-app last foreground/background times independently.
+        // The old approach tracked only the single globally-latest foreground event, which
+        // caused it to return null whenever any system UI (notification, dialog) briefly
+        // foregrounded and then dismissed — even if the user's app was still on screen.
+        val lastFgTime = mutableMapOf<String, Long>()
         val lastBgTime = mutableMapOf<String, Long>()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             when (event.eventType) {
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    if (event.timeStamp > lastFgTime) {
-                        lastFgTime = event.timeStamp
-                        lastFgPkg = event.packageName
-                    }
+                    val prev = lastFgTime[event.packageName] ?: 0L
+                    if (event.timeStamp > prev) lastFgTime[event.packageName] = event.timeStamp
                 }
                 UsageEvents.Event.MOVE_TO_BACKGROUND -> {
                     val prev = lastBgTime[event.packageName] ?: 0L
@@ -202,9 +203,12 @@ class UsageMonitorService : Service() {
                 }
             }
         }
-        // If the last-foregrounded app has since moved to background, nothing is in foreground
-        if (lastFgPkg != null && (lastBgTime[lastFgPkg] ?: 0L) > lastFgTime) return null
-        return lastFgPkg
+        // An app is currently in foreground if its last fg event is more recent than its last bg event.
+        // Return whichever such app was foregrounded most recently.
+        return lastFgTime.entries
+            .filter { (pkg, fgTime) -> (lastBgTime[pkg] ?: 0L) < fgTime }
+            .maxByOrNull { it.value }
+            ?.key
     }
 
     private fun createNotificationChannel() {

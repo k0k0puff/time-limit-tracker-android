@@ -107,19 +107,20 @@ fun OnboardingScreen(
             granted = permissions.launchAppManaged,
             required = false,
             onGrant = {
-                val launched = runCatching {
-                    context.startActivity(
-                        Intent().setClassName(
-                            "com.miui.securitycenter",
-                            "com.miui.permcenter.autostart.AutoStartManagementActivity"
-                        )
-                    )
-                }.isSuccess
-                if (!launched) {
-                    context.startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            .setData(Uri.parse("package:${context.packageName}"))
-                    )
+                // Try known MIUI/HyperOS App Launch management screens in order.
+                // If all fail, fall back to Settings > Apps list so the user can
+                // navigate to App Launch from there (never the specific app detail page).
+                val intentsToTry = listOf(
+                    // MIUI / HyperOS Security Center autostart management
+                    Intent().setClassName(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                    ),
+                    // Fallback: Settings > Apps list (user navigates to App Launch from there)
+                    Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
+                )
+                for (intent in intentsToTry) {
+                    if (runCatching { context.startActivity(intent) }.isSuccess) break
                 }
             }
         )

@@ -29,11 +29,12 @@ object AlarmScheduler {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
         } else {
-            // Fallback: window alarm (up to 5-minute tolerance)
+            // Fallback: window alarm with a small tolerance so it fires close to the target time.
+            // Previously used a 5-minute window which caused alarms to fire up to 10 min late.
             alarmManager.setWindow(
                 AlarmManager.RTC_WAKEUP,
                 triggerAt,
-                5 * 60 * 1000L,
+                30_000L,
                 pendingIntent
             )
         }

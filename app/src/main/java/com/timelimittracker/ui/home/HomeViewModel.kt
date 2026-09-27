@@ -72,6 +72,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun forceRetriggerTracking() {
+        val ctx = getApplication<Application>()
+        val intent = Intent(ctx, UsageMonitorService::class.java).apply {
+            action = UsageMonitorService.ACTION_FORCE_POLL
+        }
+        androidx.core.content.ContextCompat.startForegroundService(ctx, intent)
+    }
+
     fun setTrackingEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appInstance.dataStore.setTrackingEnabled(enabled)

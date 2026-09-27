@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,6 +47,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Time Limit Tracker") },
                 actions = {
+                    IconButton(onClick = { viewModel.forceRetriggerTracking() }) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Retrigger tracking")
+                    }
                     TextButton(onClick = onOpenPermissions) { Text("Permissions") }
                     TextButton(onClick = onOpenTemplates) { Text("Templates") }
                 }

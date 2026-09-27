@@ -23,6 +23,7 @@ class UsageMonitorService : Service() {
     companion object {
         const val ACTION_REMINDER = "com.timelimittracker.ACTION_REMINDER"
         const val ACTION_BOOT = "com.timelimittracker.ACTION_BOOT"
+        const val ACTION_FORCE_POLL = "com.timelimittracker.ACTION_FORCE_POLL"
         const val EXTRA_PACKAGE_NAME = "package_name"
         private const val NOTIF_CHANNEL_ID = "usage_monitor"
         private const val NOTIF_ID = 1
@@ -56,6 +57,11 @@ class UsageMonitorService : Service() {
             ACTION_REMINDER -> {
                 val pkg = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return START_STICKY
                 scope.launch { handleReminder(pkg) }
+            }
+            ACTION_FORCE_POLL -> {
+                // Cancel current poll loop and restart immediately so the first poll fires now
+                pollJob?.cancel()
+                pollJob = null
             }
         }
         startPollingIfNeeded()

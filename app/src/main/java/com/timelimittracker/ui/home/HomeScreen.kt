@@ -32,6 +32,7 @@ fun HomeScreen(
     onEditApp: (String) -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenPermissions: () -> Unit,
+    onOpenDebugLog: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val trackingEnabled by viewModel.trackingEnabled.collectAsStateWithLifecycle()
@@ -50,6 +51,7 @@ fun HomeScreen(
                     IconButton(onClick = { viewModel.forceRetriggerTracking() }) {
                         Icon(Icons.Default.PlayArrow, contentDescription = "Retrigger tracking")
                     }
+                    TextButton(onClick = onOpenDebugLog) { Text("Log") }
                     TextButton(onClick = onOpenPermissions) { Text("Permissions") }
                     TextButton(onClick = onOpenTemplates) { Text("Templates") }
                 }

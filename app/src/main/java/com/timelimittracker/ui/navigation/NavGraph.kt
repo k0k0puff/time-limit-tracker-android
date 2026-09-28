@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.timelimittracker.ui.addapp.AddAppScreen
+import com.timelimittracker.ui.debug.DebugLogScreen
 import com.timelimittracker.ui.home.HomeScreen
 import com.timelimittracker.ui.onboarding.OnboardingScreen
 import com.timelimittracker.ui.templates.TemplatesScreen
@@ -15,6 +16,7 @@ object Routes {
     const val HOME = "home"
     const val ADD_APP = "add_app"
     const val TEMPLATES = "templates"
+    const val DEBUG_LOG = "debug_log"
 }
 
 @Composable
@@ -39,7 +41,8 @@ fun AppNavGraph(startDestination: String) {
                 onAddApp = { navController.navigate(Routes.ADD_APP) },
                 onEditApp = { navController.navigate(Routes.ADD_APP) },
                 onOpenTemplates = { navController.navigate(Routes.TEMPLATES) },
-                onOpenPermissions = { navController.navigate(Routes.ONBOARDING) }
+                onOpenPermissions = { navController.navigate(Routes.ONBOARDING) },
+                onOpenDebugLog = { navController.navigate(Routes.DEBUG_LOG) }
             )
         }
         composable(Routes.ADD_APP) {
@@ -47,6 +50,9 @@ fun AppNavGraph(startDestination: String) {
         }
         composable(Routes.TEMPLATES) {
             TemplatesScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.DEBUG_LOG) {
+            DebugLogScreen(onBack = { navController.popBackStack() })
         }
     }
 }

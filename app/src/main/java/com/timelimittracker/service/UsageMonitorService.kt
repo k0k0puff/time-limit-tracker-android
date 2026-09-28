@@ -50,6 +50,7 @@ class UsageMonitorService : Service() {
         createNotificationChannel()
         startForeground(NOTIF_ID, buildNotification())
         ServiceWatchdogWorker.schedule(this)
+        DebugLog.log("SERVICE", "Service created, polling will start")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -85,11 +86,15 @@ class UsageMonitorService : Service() {
 
     private suspend fun poll() {
         val trackingEnabled = dataStore.trackingEnabled.first()
-        if (!trackingEnabled) return
+        if (!trackingEnabled) {
+            DebugLog.log("POLL", "Tracking disabled, skipping")
+            return
+        }
 
         val foregroundPkg = getForegroundPackage()
         val trackedApps = settingsRepo.trackedApps.first()
         val nowMs = System.currentTimeMillis()
+        DebugLog.log("POLL", "fg=$foregroundPkg | tracked=${trackedApps.map { it.packageName }}")
         Log.d(TAG, "poll: foreground=$foregroundPkg, tracked=${trackedApps.map { it.packageName }}")
 
         // Check for uninstalled apps
@@ -117,6 +122,7 @@ class UsageMonitorService : Service() {
                 // App is in foreground
                 if (session == null) {
                     // Start new session
+                    DebugLog.log("STATE", "${app.packageName}: NEW SESSION")
                     val templates = settingsRepo.getTemplates()
                     val snapshot = SessionSnapshot(
                         limitMinutes = app.limitMinutes,
@@ -130,6 +136,7 @@ class UsageMonitorService : Service() {
                 } else {
                     val (updated, event) = SessionStateMachine.onForeground(session, nowMs)
                     sessionRepo.updateSession(updated)
+                    DebugLog.log("STATE", "${app.packageName}: FG ${session.status}→${updated.status} accumulated=${updated.accumulatedActiveSeconds}s")
                     if (event == SessionEvent.LimitReached) {
                         val message = SessionStateMachine.getMessageForCycle(updated)
                         val substituted = TokenSubstitutor.substitute(
@@ -147,6 +154,7 @@ class UsageMonitorService : Service() {
                         SessionStatus.ACTIVE, SessionStatus.LIMIT_REACHED -> {
                             val paused = SessionStateMachine.onBackground(session, nowMs)
                             sessionRepo.updateSession(paused)
+                            DebugLog.log("STATE", "${app.packageName}: BG ${session.status}→PAUSED accumulated=${paused.accumulatedActiveSeconds}s")
                         }
                         SessionStatus.PAUSED -> {
                             val maybeEnded = SessionStateMachine.checkExpiry(session, nowMs)
@@ -154,6 +162,7 @@ class UsageMonitorService : Service() {
                                 sessionRepo.updateSession(maybeEnded)
                                 AlarmScheduler.cancelReminder(this, app.packageName)
                                 withContext(Dispatchers.Main) { overlayManager.hide() }
+                                DebugLog.log("STATE", "${app.packageName}: PAUSED→ENDED (expired)")
                             }
                         }
                         SessionStatus.ENDED -> { /* nothing */ }
@@ -239,6 +248,7 @@ class UsageMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        DebugLog.log("SERVICE", "Service destroyed — attempting restart")
         scope.cancel()
         overlayManager.hide()
         // Attempt immediate restart if killed by the OS

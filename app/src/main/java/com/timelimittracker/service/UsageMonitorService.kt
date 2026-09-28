@@ -49,6 +49,7 @@ class UsageMonitorService : Service() {
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         createNotificationChannel()
         startForeground(NOTIF_ID, buildNotification())
+        ServiceWatchdogWorker.schedule(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -239,6 +240,13 @@ class UsageMonitorService : Service() {
         super.onDestroy()
         scope.cancel()
         overlayManager.hide()
+        // Attempt immediate restart if killed by the OS
+        val restartIntent = Intent(this, UsageMonitorService::class.java)
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(this, restartIntent)
+        } catch (e: Exception) {
+            Log.w(TAG, "Self-restart failed, watchdog will recover", e)
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

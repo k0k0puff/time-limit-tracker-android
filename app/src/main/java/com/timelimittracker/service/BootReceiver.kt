@@ -12,5 +12,6 @@ class BootReceiver : BroadcastReceiver() {
             action = UsageMonitorService.ACTION_BOOT
         }
         ContextCompat.startForegroundService(context, serviceIntent)
+        ServiceWatchdogWorker.schedule(context)
     }
 }

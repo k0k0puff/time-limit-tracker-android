@@ -70,7 +70,14 @@ object SessionStateMachine {
 
     fun onBackground(session: SessionEntity, nowMs: Long): SessionEntity {
         if (session.status == SessionStatus.PAUSED || session.status == SessionStatus.ENDED) return session
-        return session.copy(status = SessionStatus.PAUSED, pausedAt = nowMs)
+        // Flush accumulated time before pausing so no active seconds are lost
+        val additionalSeconds = (nowMs - session.lastForegroundTimestamp) / 1000L
+        return session.copy(
+            status = SessionStatus.PAUSED,
+            pausedAt = nowMs,
+            accumulatedActiveSeconds = session.accumulatedActiveSeconds + additionalSeconds,
+            lastForegroundTimestamp = nowMs
+        )
     }
 
     fun checkExpiry(session: SessionEntity, nowMs: Long): SessionEntity {

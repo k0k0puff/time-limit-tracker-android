@@ -90,6 +90,7 @@ class UsageMonitorService : Service() {
         val foregroundPkg = getForegroundPackage()
         val trackedApps = settingsRepo.trackedApps.first()
         val nowMs = System.currentTimeMillis()
+        Log.d(TAG, "poll: foreground=$foregroundPkg, tracked=${trackedApps.map { it.packageName }}")
 
         // Check for uninstalled apps
         val deletedPackages = mutableSetOf<String>()

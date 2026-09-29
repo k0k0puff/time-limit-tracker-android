@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.timelimittracker.TimeLimitApp
 import com.timelimittracker.data.db.entities.SessionStatus
+import com.timelimittracker.service.AlarmScheduler
+import com.timelimittracker.service.DebugLog
 import com.timelimittracker.service.UsageMonitorService
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -55,8 +57,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun resetSession(packageName: String) {
         viewModelScope.launch {
-            val session = appInstance.sessionRepo.getActiveSession(packageName) ?: return@launch
+            val session = appInstance.sessionRepo.getActiveSession(packageName)
+            if (session == null) {
+                DebugLog.log("RESET", "$packageName: no active session to reset")
+                return@launch
+            }
             appInstance.sessionRepo.updateSession(session.copy(status = SessionStatus.ENDED))
+            AlarmScheduler.cancelReminder(getApplication(), packageName)
+            DebugLog.log("RESET", "$packageName: session ENDED (was ${session.status}, accumulated=${session.accumulatedActiveSeconds}s)")
+            // Force the service to re-poll immediately so a new session is created
+            // if the app is still in foreground
+            forceRetriggerTracking()
         }
     }
 
@@ -82,12 +93,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setTrackingEnabled(enabled: Boolean) {
         viewModelScope.launch {
+            if (!enabled) {
+                // End all active sessions before stopping the service so that
+                // stale ACTIVE sessions don't accumulate phantom time when
+                // tracking is re-enabled later.
+                appInstance.sessionRepo.endAllSessions()
+                DebugLog.log("TRACKING", "Disabled — all sessions ended")
+            }
             appInstance.dataStore.setTrackingEnabled(enabled)
             val ctx = getApplication<Application>()
             val intent = Intent(ctx, UsageMonitorService::class.java)
             if (enabled) {
                 androidx.core.content.ContextCompat.startForegroundService(ctx, intent)
+                DebugLog.log("TRACKING", "Enabled — service started")
             } else {
+                AlarmScheduler.cancelKeepAlive(ctx)
                 ctx.stopService(intent)
             }
         }

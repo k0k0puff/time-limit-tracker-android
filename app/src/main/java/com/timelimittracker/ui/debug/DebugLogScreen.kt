@@ -1,5 +1,9 @@
 package com.timelimittracker.ui.debug
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -13,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,17 +28,26 @@ import com.timelimittracker.service.DebugLog
 @Composable
 fun DebugLogScreen(onBack: () -> Unit) {
     val entries by DebugLog.entries.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debug Log") },
+                title = { Text("Debug Log (${entries.size})") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    TextButton(onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val text = entries.reversed().joinToString("\n")
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Debug Log", text))
+                        Toast.makeText(context, "Log copied (${entries.size} entries)", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("Copy")
+                    }
                     TextButton(onClick = { DebugLog.clear() }) {
                         Text("Clear")
                     }

@@ -38,6 +38,9 @@ class UsageMonitorService : Service() {
     private lateinit var overlayManager: OverlayManager
     private lateinit var usageStatsManager: UsageStatsManager
     private var pollJob: Job? = null
+    /** Max age (ms) for a session's lastForegroundTimestamp before it's considered stale.
+     *  Must be well above real-world poll gaps (Android Doze can cause 5+ min gaps). */
+    private val STALE_SESSION_THRESHOLD_MS = 10 * 60 * 1000L  // 10 minutes
 
     override fun onCreate() {
         super.onCreate()
@@ -65,8 +68,11 @@ class UsageMonitorService : Service() {
                 pollJob?.cancel()
                 pollJob = null
             }
+            // ACTION_KEEP_ALIVE: no special handling needed — just ensure polling is alive
         }
         startPollingIfNeeded()
+        // Reschedule the keepalive alarm so the service is revived within ~2 min if killed
+        AlarmScheduler.scheduleKeepAlive(this)
         return START_STICKY
     }
 
@@ -76,6 +82,8 @@ class UsageMonitorService : Service() {
             while (isActive) {
                 try {
                     poll()
+                } catch (e: CancellationException) {
+                    throw e  // Don't swallow cancellation
                 } catch (e: Exception) {
                     Log.e(TAG, "Poll error", e)
                 }
@@ -116,7 +124,7 @@ class UsageMonitorService : Service() {
         }
 
         trackedApps.filter { it.packageName !in deletedPackages }.forEach { app ->
-            val session = sessionRepo.getActiveSession(app.packageName)
+            var session = sessionRepo.getActiveSession(app.packageName)
 
             if (foregroundPkg == app.packageName) {
                 // App is in foreground
@@ -150,6 +158,19 @@ class UsageMonitorService : Service() {
             } else {
                 // App not in foreground
                 if (session != null) {
+                    // Guard: if session is ACTIVE but lastForegroundTimestamp is stale,
+                    // the service was likely killed and restarted. Reset the timestamp
+                    // to prevent phantom time accumulation on the background transition.
+                    // Only applied here (not in the foreground path) because if the app
+                    // IS currently in foreground, the gap represents real usage time.
+                    if (session.status == SessionStatus.ACTIVE &&
+                        (nowMs - session.lastForegroundTimestamp) > STALE_SESSION_THRESHOLD_MS) {
+                        val gapSec = (nowMs - session.lastForegroundTimestamp) / 1000
+                        DebugLog.log("STATE", "${app.packageName}: STALE BG reset (gap=${gapSec}s)")
+                        val fixed = session.copy(lastForegroundTimestamp = nowMs)
+                        sessionRepo.updateSession(fixed)
+                        session = fixed
+                    }
                     when (session.status) {
                         SessionStatus.ACTIVE, SessionStatus.LIMIT_REACHED -> {
                             val paused = SessionStateMachine.onBackground(session, nowMs)
@@ -248,16 +269,12 @@ class UsageMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        DebugLog.log("SERVICE", "Service destroyed — attempting restart")
+        DebugLog.log("SERVICE", "Service destroyed")
         scope.cancel()
         overlayManager.hide()
-        // Attempt immediate restart if killed by the OS
-        val restartIntent = Intent(this, UsageMonitorService::class.java)
-        try {
-            androidx.core.content.ContextCompat.startForegroundService(this, restartIntent)
-        } catch (e: Exception) {
-            Log.w(TAG, "Self-restart failed, watchdog will recover", e)
-        }
+        // START_STICKY + ServiceWatchdogWorker handle restarts;
+        // self-restarting here interfered with intentional stops
+        // when the user toggled tracking off.
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
